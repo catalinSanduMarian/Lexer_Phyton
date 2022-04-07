@@ -93,12 +93,12 @@ def procesConcatOperation(firstOperand, secondOperand) -> NFA:
     secondInitState = secondOperand.initialState
     state = 0
     delta = []
-    for tranz in secondOperand.delta:
-        if isinstance(tranz, int):
-            state = tranz + firstOperand.finalState + 1
+    for transition in secondOperand.delta:
+        if isinstance(transition, int):
+            state = transition + firstOperand.finalState + 1
         else:
-            position = tranz[1] + firstOperand.finalState + 1
-            deltaTranstition = [tranz[0], position]
+            position = transition[1] + firstOperand.finalState + 1
+            deltaTranstition = [transition[0], position]
             delta = delta + [state, deltaTranstition]
     epsilonTransition = ["", secondInitState + firstOperand.finalState + 1]
     epsilon = [firstOperand.finalState, epsilonTransition]
@@ -208,9 +208,9 @@ def step(lista, caracters, nfa, trans):
     ult = []
     for elem in lista:
         if elem in nfa.delta:
-            for tranz in nfa.delta[elem]:
-                if caracters in tranz:
-                    var = tranz[1]
+            for transition in nfa.delta[elem]:
+                if caracters in transition:
+                    var = transition[1]
                     ult = list(trans[var])
                     if ult == []:
                         return [var]
