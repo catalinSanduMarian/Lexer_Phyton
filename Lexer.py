@@ -4,7 +4,6 @@ from typing import Dict, List
 
 Conf = (int, str)
 
-
 class DFA:
     def __init__(self, alphabet, initialState, delta, finalStates, nume):
         self.alphabet: List[str] = alphabet
@@ -29,7 +28,6 @@ class DFA:
 
         conf = (self.initialState, word)
         while conf[1]:
-
             if conf[1][0] in self.alphabet:
                 conf = self.step(conf)
             else:
@@ -38,118 +36,102 @@ class DFA:
 
 
 def tolist(cuvant) -> List[str]:
-    out = []
-    ok = 1
+    list = []
+    isNewLine = 0
     cuvant_iter = iter(cuvant)
     for litera in cuvant_iter:
         if litera == '\\':
-            ok = 0
+            isNewLine = 1
 
-        if ok == 1:
-            out.append(litera)
+        if isNewLine == 0:
+            list.append(litera)
         else:
-            out.append("\n")
-            ok = 1
+            list.append("\n")
+            isNewLine = 0
             next(cuvant_iter)
 
-    return out
+    return list
 
+#handles reading and arranging the input into a usable form
 
-def citire(lines, output) -> DFA:
+def citire(input) -> DFA:
     delta = {}
+    nume = input[1]
+    alphabet = tolist(input[0])
+    input = input[2:]
+    init_state = atoi(input[0])
 
-    nume = lines[1]
-
-    alp = tolist(lines[0])
-    lines = lines[2:]
-
-    init_state = atoi(lines[0])
-
-    for i in range(1, len(lines) - 1):
-        elem = lines[i].split(",")
-
+    for i in range(1, len(input) - 1):
+        elem = input[i].split(",")
         elem[1] = elem[1][1:-1]
         if(elem[1]) == "\\n":
             elem[1] = "\n"
-        d = {elem[1]: atoi(elem[2])}
 
+        d = {elem[1]: atoi(elem[2])}
         if atoi(elem[0]) in delta:
             delta[atoi(elem[0])].append(d)
         else:
             delta[atoi(elem[0])] = [d]
-    states = lines[len(lines) - 1].split()
+
+    states = input[len(input) - 1].split()
     final_states = []
     for elem in states:
         elem = atoi(elem)
         final_states.append(elem)
 
-    dfa = DFA(alp, init_state, delta, final_states, nume)
-
+    dfa = DFA(alphabet, init_state, delta, final_states, nume)
     return dfa
 
 
-def verificare(cuv2, dfa, out) -> bool:
-    a = {cuv2: cuv2}
-
-    for ccc in a:
-        cuv2 = ccc
-
-    for dfa1 in dfa:
-        if (dfa1.accept(cuv2)):
-            if cuv2 == "\n":
-                cuv2 = "\\n"
-            print (dfa1.nume + " " + cuv2, file=out)
+def IsInGrammer(word, dfas, out) -> bool:
+    for dfa in dfas:
+        if (dfa.accept(word)):
+            if word == "\n":
+                word = "\\n"
+            print (dfa.nume + " " + word, file=out)
             return True
-
     return False
 
 
-def mananca(cuvant, dfa, foutput):
+def consumeLetter(word, dfa, foutput):
     with open(foutput, "w") as out:
-        copie = cuvant
+        copie = word
         cuv2 = ""
-        i = len(cuvant)
+        wordSize = len(word)
         ok = 2
-        c = 0
+        currentLocation = 0
         while copie:
 
-            if (verificare(copie, dfa, out)):
-                c = i
-                copie = cuvant[i:]
-                i = len(cuvant)
+            if (IsInGrammer(copie, dfa, out)):
+                currentLocation = wordSize
+                copie = word[wordSize:]
+                wordSize = len(word)
                 ok = 1
-
             else:
-                i = i - 1
-
+                wordSize = wordSize - 1
                 copie = copie[:-1]
                 ok = 0
 
     if ok == 0:
         with open(foutput, "w") as out:
             print ("No viable alternative at character ", file=out, end='')
-            print(c, file=out, end='')
+            print(currentLocation, file=out, end='')
             print (", line 0", file=out, end='')
 
 
 def runlexer(lexer, finput, foutput):
 
     dfa = []
-
     with open(lexer, "r") as input:
-
         dectit = input.read()
         partitionat = dectit.split("\n\n")
         for elem in partitionat:
             ceva = elem.split("\n")
-            dfa.append(citire(ceva, foutput))
+            dfa.append(citire(ceva))
 
     with open(finput, "r") as input:
         cuvantul = input.read()
+        consumeLetter(cuvantul, dfa, foutput)
 
-        mananca(cuvantul, dfa, foutput)
 
-
-if __name__ == '__main__':
-
-    print(dfa.accept("ab"))
+#if __name__ == '__main__':

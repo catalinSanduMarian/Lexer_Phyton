@@ -13,157 +13,180 @@ class NFA:
         self.nrstari: int = nrstari
 
 
-def var(litera) -> NFA:
-    init_state = 0
+def processSimpleValue(operand) -> NFA:
+    initialState = 0
     finalState = 1
-    tranzitie = [litera, finalState]
-    delta = [init_state, tranzitie]
+    tranzitie = [operand, finalState]
+    delta = [initialState, tranzitie]
+    nfa = NFA(initialState, delta, finalState, finalState, [])
+    return nfa
+
+
+def processPlusOperation(operation) -> NFA:
+    initialState = operation.finalState + 1
+    finalState = operation.finalState + 2
+    InitialEpsilonState = ["", operation.initialState]
+    FinalEpsilonState = ["", finalState]
+    delta = (
+        operation.delta
+        + [initialState, InitialEpsilonState]
+        + [operation.finalState, InitialEpsilonState]
+        + [operation.finalState, FinalEpsilonState]
+    )
+    nfa = NFA(initialState, delta, finalState, finalState, [])
+    return nfa
+
+
+def processStarOperation(operation) -> NFA:
+    init_state = operation.finalState + 1
+    finalState = operation.finalState + 2
+    InitialEpsilonState = ["", operation.initialState]
+    FinalEpsilonState = ["", finalState]
+    delta = (
+        operation.delta
+        + [init_state, InitialEpsilonState]
+        + [init_state, FinalEpsilonState]
+        + [operation.finalState, InitialEpsilonState]
+        + [operation.finalState, FinalEpsilonState]
+    )
     nfa = NFA(init_state, delta, finalState, finalState, [])
     return nfa
 
 
-def plusul(op) -> NFA:
-    init_state = op.finalState + 1
-    finalState = op.finalState + 2
-    epTranzF = ["", op.initialState]
-    epTranzDF = ["", finalState]
-    delta = op.delta + [init_state, epTranzF] + \
-        [op.finalState, epTranzF] + [op.finalState, epTranzDF]
-    nfa = NFA(init_state, delta, finalState, finalState, [])
-    return nfa
-
-
-def starr(op) -> NFA:
-    init_state = op.finalState + 1
-    finalState = op.finalState + 2
-    epTranzF = ["", op.initialState]
-    epTranzDF = ["", finalState]
-    delta = op.delta + [init_state,
-                        epTranzF] + [init_state,
-                                     epTranzDF] + [op.finalState,
-                                                   epTranzF] + [op.finalState,
-                                                                epTranzDF]
-    nfa = NFA(init_state, delta, finalState, finalState, [])
-    return nfa
-
-
-def union(opUnu, opDoi) -> NFA:
+def processUnionOperation(firstOperand, secondOperand) -> NFA:
     state = 0
     delta = []
-    for tranz in opDoi.delta:
-        if isinstance(tranz, int):
-            state = tranz + opUnu.finalState + 1
-            pass
+    for transition in secondOperand.delta:
+        if isinstance(transition, int):
+            state = transition + firstOperand.finalState + 1
         else:
-            tranz[1] = tranz[1] + opUnu.finalState + 1
-            delta = delta + [state, tranz]
-    epstranzU = ["", opUnu.initialState]
-    epstranzD = ["", opDoi.initialState + opUnu.finalState + 1]
-    epsilon = [opDoi.finalState + opUnu.finalState + 2, epstranzU] + \
-        [opDoi.finalState + opUnu.finalState + 2, epstranzD]
-    tranzitiePart = opUnu.delta + delta + epsilon
-    transfinalaD = opUnu.finalState + opDoi.finalState + 1
-    epTransFinal = ["", opDoi.finalState + opUnu.finalState + 3]
-    epFinal = [transfinalaD, epTransFinal] + [opUnu.finalState, epTransFinal]
-    TranzitiiFinale = tranzitiePart + epFinal
-    stareFinala = opDoi.finalState + opUnu.finalState + 3
-    stareInitiala = opDoi.finalState + opUnu.finalState + 2
+            transition[1] = transition[1] + firstOperand.finalState + 1
+            delta = delta + [state, transition]
+    InitialEpsilonState = ["", firstOperand.initialState]
+    FinalEpsilonState = ["", secondOperand.initialState + firstOperand.finalState + 1]
+
+    epsilon = [
+        secondOperand.finalState + firstOperand.finalState + 2,
+        InitialEpsilonState,
+    ] + [secondOperand.finalState + firstOperand.finalState + 2, FinalEpsilonState]
+
+    partialTransition = firstOperand.delta + delta + epsilon
+    finalTransition = firstOperand.finalState + secondOperand.finalState + 1
+    finalEpsilonTransition = [
+        "",
+        secondOperand.finalState + firstOperand.finalState + 3,
+    ]
+    epFinal = [finalTransition, finalEpsilonTransition] + [
+        firstOperand.finalState,
+        finalEpsilonTransition,
+    ]
+
+    TranzitiiFinale = partialTransition + epFinal
+    stareFinala = secondOperand.finalState + firstOperand.finalState + 3
+    stareInitiala = secondOperand.finalState + firstOperand.finalState + 2
     nfa = NFA(stareInitiala, TranzitiiFinale, stareFinala, stareFinala, [])
     return nfa
 
 
-def concat(opUnu, opDoi) -> NFA:
-    init_state = opUnu.initialState
-    initdoi = opDoi.initialState
+def procesConcatOperation(firstOperand, secondOperand) -> NFA:
+    firstInitState = firstOperand.initialState
+    secondInitState = secondOperand.initialState
     state = 0
     delta = []
-    for tranz in opDoi.delta:
+    for tranz in secondOperand.delta:
         if isinstance(tranz, int):
-            state = tranz + opUnu.finalState + 1
-            pass
+            state = tranz + firstOperand.finalState + 1
         else:
-            nr = tranz[1] + opUnu.finalState + 1
-            tranzfinla = [tranz[0], nr]
-            delta = delta + [state, tranzfinla]
-    epstranz = ["", initdoi + opUnu.finalState + 1]
-    epsilon = [opUnu.finalState, epstranz]
-    tranzitiePart = opUnu.delta + delta + epsilon
-    finalState = opDoi.finalState + opUnu.finalState + 1
-    nfa = NFA(init_state, tranzitiePart, finalState, finalState, [])
+            position = tranz[1] + firstOperand.finalState + 1
+            deltaTranstition = [tranz[0], position]
+            delta = delta + [state, deltaTranstition]
+    epsilonTransition = ["", secondInitState + firstOperand.finalState + 1]
+    epsilon = [firstOperand.finalState, epsilonTransition]
+    finalTransition = firstOperand.delta + delta + epsilon
+    finalState = secondOperand.finalState + firstOperand.finalState + 1
+    nfa = NFA(firstInitState, finalTransition, finalState, finalState, [])
     return nfa
 
 
-def nrOp(expr) -> int:
-    if expr == 'STAR':
+def operationNumber(expresion) -> int:
+    if expresion == "STAR":
         return 1
-    if expr == 'PLUS':
+    if expresion == "PLUS":
         return 2
 
-    if expr == 'CONCAT':
+    if expresion == "CONCAT":
         return 3
-    if expr == 'UNION':
+    if expresion == "UNION":
         return 4
-    if len(expr) == 1:
+    if len(expresion) == 1:
         return 0
     return 60
 
 
-def splituire(stringu):
-    a = stringu.split(" ")
-    b = []
+def splitPhrase(phrase):
+    splitUpPhrase = phrase.split(" ")
+    elemList = []
     ok = 1
-    for elem in a:
+    for elem in splitUpPhrase:
         if (elem == "'") & (len(elem) == 1):
-            if(ok == 1):
+            if ok == 1:
                 elem = "' '"
                 ok = 0
             else:
                 ok = 1
                 continue
-        b.append(elem)
-    return b
+        elemList.append(elem)
+    return elemList
 
 
-def toafn(input) -> NFA:
+def toAfn(input) -> NFA:
     with open(input, "r") as input:
-        line = input.readlines()
-        elemente = splituire(line[0])
-        stivaExp = []
+
+        elemente = splitPhrase(input.readlines()[0])
+        expresionStack = []
         stivaOperanzi = []
         alph = []
-        for cuvant in elemente:
-            stivaExp.append(cuvant)
-            if len(cuvant) == 1:
-                if cuvant not in alph:
-                    alph.append(cuvant)
-            if cuvant[0] == "'":
-                alph.append(cuvant[1:-1])
-                stivaExp.pop()
-                stivaExp.append(cuvant[1:-1])
-        while stivaExp:
-            a = stivaExp.pop()
-            if nrOp(a) == 1:
-                op = stivaOperanzi.pop()
-                Stea = starr(op)
-                stivaOperanzi.append(Stea)
-            if nrOp(a) == 2:
-                op = stivaOperanzi.pop()
-                Stea = plusul(op)
-                stivaOperanzi.append(Stea)
-            if nrOp(a) == 3:
-                ounu = stivaOperanzi.pop()
-                odoi = stivaOperanzi.pop()
-                conc = concat(ounu, odoi)
-                stivaOperanzi.append(conc)
-            if nrOp(a) == 4:
-                ounu = stivaOperanzi.pop()
-                odoi = stivaOperanzi.pop()
-                Union = union(ounu, odoi)
-                stivaOperanzi.append(Union)
-            if nrOp(a) == 0:
-                stivaOperanzi.append(var(a))
-            if nrOp(a) == 60:
-                stivaOperanzi.append(var(a))
+        for word in elemente:
+            expresionStack.append(word)
+            if len(word) == 1:
+                if word not in alph:
+                    alph.append(word)
+
+            if word[0] == "'":
+                alph.append(word[1:-1])
+                expresionStack.pop()
+                expresionStack.append(word[1:-1])
+
+        while expresionStack:
+            a = expresionStack.pop()
+            if operationNumber(a) == 1:
+                operand = stivaOperanzi.pop()
+                star = processStarOperation(operand)
+                stivaOperanzi.append(star)
+
+            if operationNumber(a) == 2:
+                operand = stivaOperanzi.pop()
+                star = processPlusOperation(operand)
+                stivaOperanzi.append(star)
+
+            if operationNumber(a) == 3:
+                firstOperand = stivaOperanzi.pop()
+                secondOperand = stivaOperanzi.pop()
+                concatenare = procesConcatOperation(firstOperand, secondOperand)
+                stivaOperanzi.append(concatenare)
+
+            if operationNumber(a) == 4:
+                firstOperand = stivaOperanzi.pop()
+                secondOperand = stivaOperanzi.pop()
+                union = processUnionOperation(firstOperand, secondOperand)
+                stivaOperanzi.append(union)
+
+            if operationNumber(a) == 0:
+                stivaOperanzi.append(processSimpleValue(a))
+
+            if operationNumber(a) == 60:
+                stivaOperanzi.append(processSimpleValue(a))
+
     deRet = stivaOperanzi.pop()
     deRet.alph = alph
     return deRet
@@ -177,16 +200,16 @@ def dfs(visited, graph, node):
         visited.add(node)
         if node in graph.delta:
             for neighbour in graph.delta[node]:
-                if (neighbour[0] == ""):
+                if neighbour[0] == "":
                     dfs(visited, graph, neighbour[1])
 
 
-def step(lista, carac, nfa, trans):
+def step(lista, caracters, nfa, trans):
     ult = []
     for elem in lista:
-        if(elem in nfa.delta):
+        if elem in nfa.delta:
             for tranz in nfa.delta[elem]:
-                if carac in tranz:
+                if caracters in tranz:
                     var = tranz[1]
                     ult = list(trans[var])
                     if ult == []:
@@ -194,159 +217,145 @@ def step(lista, carac, nfa, trans):
     return ult
 
 
-def recurs(nfa, stare_actuala, trans, newDelta):
+def computeDelta(nfa, stare_actuala, visitedVector, newDelta):
     if stare_actuala == []:
         return newDelta
-    for carac in nfa.alph:
-        stare_urm = step(stare_actuala, carac, nfa, trans)
+    for caracter in nfa.alph:
+        stare_urm = step(stare_actuala, caracter, nfa, visitedVector)
         if stare_urm == []:
-            # handles synca states:
-            tranzitie = [carac, [99]]
-            d = [stare_actuala, tranzitie]
-            newDelta = newDelta + d
+            tranzitie = [caracter, [99]]
+            newDelta = newDelta + [stare_actuala, tranzitie]
         else:
             if True:
-                okayyyy = 1
+                shouldAdd = 1
                 for i in range(len(newDelta)):
                     if newDelta[i] == stare_actuala:
-                        if (carac in newDelta[i + 1]):
+                        if caracter in newDelta[i + 1]:
                             if newDelta[i + 1][1] == stare_urm:
-                                tranzitie = [carac, stare_urm]
-                                d = [stare_actuala, tranzitie]
-                                newDelta = newDelta + d
-                                okayyyy = 0
-                if okayyyy == 1:
-                    tranzitie = [carac, stare_urm]
-                    d = [stare_actuala, tranzitie]
-                    newDelta = newDelta + d
-                    newDelta = recurs(nfa, stare_urm, trans, newDelta)
-    return(newDelta)
+                                tranzitie = [caracter, stare_urm]
+                                newDelta = newDelta + [stare_actuala, tranzitie]
+                                shouldAdd = 0
+                if shouldAdd == 1:
+                    tranzitie = [caracter, stare_urm]
+                    newDelta = newDelta + [stare_actuala, tranzitie]
+                    newDelta = computeDelta(nfa, stare_urm, visitedVector, newDelta)
+    return newDelta
 
 
-def closure(nfa, closers, states):
+def epsilonClosure(nfa, visitetdVector, states):
     newDelta = []
-    newDelta = recurs(nfa, list(closers[nfa.initialState]), closers, newDelta)
-    for x in nfa.alph:
-        tranzitie = [x, [99]]
-        d = [[99], tranzitie]
-        newDelta = newDelta + d
-    deltaAproapeFinal = []
+    newDelta = computeDelta(
+        nfa, list(visitetdVector[nfa.initialState]), visitetdVector, newDelta
+    )
+    for letter in nfa.alph:
+        newDelta = newDelta + [[99], [letter, [99]]]
+    delta = []
     for state in newDelta:
-        ok = 1
-        for x in nfa.alph:
-            if x in state:
-                tranzitie = state
-                nrCrt = 0
-                for element in tranzitie[1]:
-                    nrCrt = nrCrt * 100 + element
-                ok = 0
-                tranzapp = [tranzitie[0], nrCrt]
-                d = [retinut, tranzapp]
-                deltaAproapeFinal = deltaAproapeFinal + d
+        isFound = 0
+        for letter in nfa.alph:
+            if letter in state:
+                elementIdentifier = 0
+                isFound = 1
+                for element in state[1]:
+                    elementIdentifier = elementIdentifier * 100 + element
+                delta = delta + [startId, [state[0], elementIdentifier]]
 
-        if ok == 1:
-            retinut = 0
+        if isFound == 0:
+            startId = 0
             for element in state:
-                retinut = retinut * 100 + element
-    return(deltaAproapeFinal)
+                startId = startId * 100 + element
+    return delta
 
 
-def findIN(lista, uint):
+def findPosition(lista, element):
     for x in range(len(lista)):
-        if lista[x] == uint:
+        if lista[x] == element:
             return x
-            pass
     return -1
 
 
-def verificare(intunu, intdoi):
-    intunu = intunu * (-1)
-    if intunu == 0:
-        if intdoi == 0:
-            return 1
-        return 0
-    while intunu > 0:
-        if intunu == intdoi:
-            return 1
-        if intunu % 100 == intdoi:
-            return 1
+def matchStates(startingStates, finalStates):
+    startingStates = startingStates * (-1)
+    if startingStates == 0:
+        if finalStates == 0:
+            return True
+        return False
+    while startingStates > 0:
+        if startingStates == finalStates:
+            return True
+        if startingStates % 100 == finalStates:
+            return True
         else:
-            intunu = intunu // 100
-        pass
-    return 0
+            startingStates = startingStates // 100
+    return False
 
 
 def toDFN(nfa) -> NFA:
     delta = {}
-    ok = 0
-    for tranz in nfa.delta:
-        if isinstance(tranz, int):
-            state = tranz
-            pass
+    for transition in nfa.delta:
+        if isinstance(transition, int):
+            state = transition
         else:
             if state in delta:
-                delta[state].append(tranz)
+                delta[state].append(transition)
             else:
-                delta[state] = [tranz]
-                ok = ok + 1
+                delta[state] = [transition]
+
     nfa.delta = delta
-    vect = []
+    visitedVector = []
     for x in range(100):
-        vect.append([])
+        visitedVector.append([])
 
     for st in nfa.delta:
         visited = set()
         dfs(visited, nfa, st)
-        vect[st] = visited
-    listaS = [nfa.initialState]
-    newDelta = closure(nfa, vect, listaS)
+        visitedVector[st] = visited
+    newDelta = epsilonClosure(nfa, visitedVector, [nfa.initialState])
     delta = {}
     Stari = []
-    nr = 0
+    statesNumber = 0
     stare_initiala = 100
-    for tranz in newDelta:
-        if isinstance(tranz, int):
-            state = -tranz
-            pass
+    for transition in newDelta:
+        if isinstance(transition, int):
+            state = -transition
         else:
-            tranz[1] = -1 * tranz[1]
+            transition[1] = -1 * transition[1]
             if stare_initiala == 100:
                 stare_initiala = state
             if state in delta:
-                delta[state].append(tranz)
+                delta[state].append(transition)
             else:
                 Stari.append(state)
-                delta[state] = [tranz]
-                nr = nr + 1
-    Findelta = {}
+                delta[state] = [transition]
+                statesNumber = statesNumber + 1
+    dfaDelta = {}
     finalStates = []
     for states in delta:
-        for tranz in delta[states]:
-            tranz[1] = findIN(Stari, tranz[1])
-            caract = findIN(Stari, states)
-            if caract in Findelta:
-                Findelta[caract].append(tranz)
+        for transition in delta[states]:
+            transition[1] = findPosition(Stari, transition[1])
+            caract = findPosition(Stari, states)
+            if caract in dfaDelta:
+                dfaDelta[caract].append(transition)
             else:
-                okay = verificare(states, nfa.finalState)
-                if okay == 1:
-                    finalStates .append(caract)
-                Findelta[caract] = [tranz]
-    dfa = NFA(0, Findelta, finalStates, nr, nfa.alph)
+                if matchStates(states, nfa.finalState):
+                    finalStates.append(caract)
+                dfaDelta[caract] = [transition]
+    dfa = NFA(0, dfaDelta, finalStates, statesNumber, nfa.alph)
     return dfa
 
 
 def printare(dfa, out, nume):
-    for x in dfa.alph:
-        print(x, file=out, end="")
+    for letter in dfa.alph:
+        print(letter, file=out, end="")
     print("", file=out)
     print(nume, file=out)
     print(dfa.initialState, file=out, end="")
     for state in dfa.delta:
-        for tranz in dfa.delta[state]:
+        for transition in dfa.delta[state]:
             print("", file=out)
             print(state, end=",", file=out)
-            print("'" + tranz[0] + "'", end=",", file=out)
-            print(tranz[1], file=out, end="")
+            print("'" + transition[0] + "'", end=",", file=out)
+            print(transition[1], file=out, end="")
     print("", file=out)
     if dfa.finalState == []:
         print("failed")
@@ -356,7 +365,7 @@ def printare(dfa, out, nume):
 
 
 def regex_dfa(input, output, nume):
-    nfa = toafn(input)
+    nfa = toAfn(input)
     dfa = toDFN(nfa)
     printare(dfa, output, nume)
 
@@ -364,109 +373,105 @@ def regex_dfa(input, output, nume):
 # part 2: Regex to Prenex form
 
 
-def solutionare(cuv) -> str:
-    lung = len(cuv)
-    stivaOp = []
-    x = 0
-    while x < lung:
-        if cuv[x] == "'":
-            ghilim = cuv[x + 1:]
-            str2 = "'"
-            for elem in ghilim:
-                str2 = str2 + elem
-                if (elem == "'"):
+def transformToPrenex(cuv) -> str:
+    lungime = len(cuv)
+    stivaOperanzi = []
+    currentLength = 0
+    while currentLength < lungime:
+        if cuv[currentLength] == "'":
+            textGhilimele = cuv[currentLength + 1 :]
+            operand = "'"
+            for elem in textGhilimele:
+                operand = operand + elem
+                if elem == "'":
                     break
-            x = x + len(str2) - 1
-            stivaOp.append(str2)
-            pass
-        elif cuv[x] == "|":
-            strin = "UNION " + stivaOp.pop()
-            stivaOp.append(strin)
-        elif cuv[x] == "*":
-            st = "STAR " + stivaOp.pop()
-            stivaOp.append(st)
-            pass
-        elif cuv[x] == "+":
-            st = "PLUS " + stivaOp.pop()
-            stivaOp.append(st)
-            pass
+            currentLength = currentLength + len(operand) - 1
+            stivaOperanzi.append(operand)
+        elif cuv[currentLength] == "|":
+            union = "UNION " + stivaOperanzi.pop()
+            stivaOperanzi.append(union)
+        elif cuv[currentLength] == "*":
+            star = "STAR " + stivaOperanzi.pop()
+            stivaOperanzi.append(star)
+        elif cuv[currentLength] == "+":
+            plus = "PLUS " + stivaOperanzi.pop()
+            stivaOperanzi.append(plus)
         else:
-            if stivaOp == []:
-                stivaOp.append(cuv[x])
+            if stivaOperanzi == []:
+                stivaOperanzi.append(cuv[currentLength])
             else:
-                if cuv[x - 1] == "|":
-                    stivaOp.append(cuv[x])
-                    x = x + 1
+                if cuv[currentLength - 1] == "|":
+                    stivaOperanzi.append(cuv[currentLength])
+                    currentLength = currentLength + 1
                     continue
-                strin = "CONCAT " + stivaOp.pop()
-                stivaOp.append(strin)
-                stivaOp.append(cuv[x])
-        x = x + 1
-    str1 = " "
-    for elem in stivaOp:
-        str1 = str1 + elem + " "
-    str1 = str1[1:-1]
-    return (str1)
+                concatenare = "CONCAT " + stivaOperanzi.pop()
+                stivaOperanzi.append(concatenare)
+                stivaOperanzi.append(cuv[currentLength])
+        currentLength = currentLength + 1
+    prenexText = " "
+    for elem in stivaOperanzi:
+        prenexText = prenexText + elem + " "
+    prenexText = prenexText[1:-1]
+    return prenexText
 
 
-def printareFisier(nume, str1, output, out2):
+def printareFisier(nume, prenexForm, output, out2):
     with open(output, "w") as out:
-        print(str1, file=out, end="")
+        print(prenexForm, file=out, end="")
     regex_dfa("auxunu", out2, nume)
 
 
 def toprenex(input):
-    ok = 0
+    shouldPrint = False
     with open(input, "r") as input:
         with open("auxiliardoi", "w") as out2:
             line = input.read().splitlines()
             for regex in line:
-                if ok == 1:
+                if shouldPrint:
                     print("", file=out2)
                     print("", file=out2)
-                ok = 1
-                a = regex.split(" ", maxsplit=1)
-                nume = a[0]
-                cuv = a[1]
+                shouldPrint = True
+                partionatedRegex = regex.split(" ", maxsplit=1)
+                nume = partionatedRegex[0]
+                word = partionatedRegex[1]
 
-                stivaOp = []
-                for x in range(10):
-                    stivaOp.append([])
+                stivaOperatii = []
+                for currentCaracter in range(10):
+                    stivaOperatii.append([])
                 nivel = 0
-                asd = len(cuv) - 1
-                x = 0
-                while x < asd:
-                    if cuv[x] == "(":
+                wordLength = len(word) - 1
+                currentCaracter = 0
+                while currentCaracter < wordLength:
+                    if word[currentCaracter] == "(":
                         nivel = nivel + 1
-                        x = x + 1
+                        currentCaracter = currentCaracter + 1
                         continue
 
-                    elif cuv[x] == ")":
-                        sol = solutionare(stivaOp[nivel])
-                        stivaOp[nivel] = []
+                    elif word[currentCaracter] == ")":
+                        newOperation = transformToPrenex(stivaOperatii[nivel])
+                        stivaOperatii[nivel] = []
                         nivel = nivel - 1
-                        x = x + 1
-                        stivaOp[nivel].append(sol)
+                        currentCaracter = currentCaracter + 1
+                        stivaOperatii[nivel].append(newOperation)
                         continue
 
-                    stivaOp[nivel].append(cuv[x])
-                    x = x + 1
-                rezolvare = solutionare(stivaOp[0])
-                printareFisier(nume, rezolvare, "auxunu", out2)
+                    stivaOperatii[nivel].append(word[currentCaracter])
+                    currentCaracter = currentCaracter + 1
+                penexForm = transformToPrenex(stivaOperatii[0])
+                printareFisier(nume, penexForm, "auxunu", out2)
 
 
 def runcompletelexer(Lexer, input, output):
     toprenex(Lexer)
     with open(output, "w") as out:
         print(Lexer, file=out)
-    pass
     runlexer("auxiliardoi", input, output)
 
 
-if __name__ == '__main__':
-    lexer_file = "C:\\Users\\Cata\\Desktop\\Lexer_Pyton\\tests\\T3\\regex\\T3.5\\T3.5.lex"
-    input_file = "C:\\Users\\Cata\\Desktop\\Lexer_Pyton\\tests\\T3\\regex\\T3.5\\input\\T3.5.8.in"
-    output_file = "C:\\Users\\Cata\\Desktop\\Lexer_Pyton\\tests\\T3\\regex\\T3.10\\out\\eee.txt"
+if __name__ == "__main__":
+    lexer_file = "C:\\Users\\Cata\\Desktop\\git CV\\Lexer_Pyton\\tests\\T3\\regex\\T3.5\\T3.5.lex"
+    input_file = "C:\\Users\\Cata\\Desktop\\git CV\\Lexer_Pyton\\tests\\T3\\regex\\T3.5\\input\\T3.5.8.in"
+    output_file = "C:\\Users\\Cata\\Desktop\\eee.txt"
     print("Running...")
     runcompletelexer(lexer_file, input_file, output_file)
-    print("Done!")
+    print("Done!, check ", output_file)
